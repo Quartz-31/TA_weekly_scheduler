@@ -498,16 +498,17 @@ function setFormat(fmt) {
   currentFormat = fmt;
   document.getElementById('fmtPost').classList.toggle('active', fmt === 'post');
   document.getElementById('fmtStory').classList.toggle('active', fmt === 'story');
-  document.getElementById('previewLbl').textContent = fmt === 'post' ? 'Live preview — 3 : 4 Post' : 'Live preview — 9 : 16 Story';
+  document.getElementById('previewLbl').textContent = fmt === 'post' ? 'Live preview — 3 : 4 Post (1080×1440)' : 'Live preview — 9 : 16 Story (1080×1920)';
   render();
 }
 
 function render() {
   const canvas = document.getElementById('scheduleCanvas');
   const ctx = canvas.getContext('2d');
-  // Post: 900×1200 (3:4) | Story: 1080×1920 (9:16)
-  const CW = currentFormat === 'story' ? 1080 : 900;
-  const CH = currentFormat === 'story' ? 1920 : 1200;
+  // Post: 1080×1440 (3:4 at proper Instagram resolution)
+  // Story: 1080×1920 (9:16, already correct)
+  const CW = 1080;
+  const CH = currentFormat === 'story' ? 1920 : 1440;
   canvas.width = CW; canvas.height = CH;
   // Keep display width fixed at 400px; height scales with ratio
   canvas.style.width = '400px';
@@ -568,6 +569,8 @@ function render() {
   const isStory = currentFormat === 'story';
 
   // ── LAYOUT CONSTANTS
+  // Layout baseline is always 900px wide for Post proportions
+  // Both formats are now 1080px wide so scale accordingly
   const wScale     = CW / 900;
   const PAD_X_N    = 150 * wScale;
   // Story: 110px wide day col; Post: 188px
