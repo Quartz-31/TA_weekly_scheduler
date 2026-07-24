@@ -221,12 +221,12 @@ input:focus, select:focus { border-color: var(--pink); background: #fff; }
 
 <script>
 // ── LOGO ─────────────────────────────────────────────────────────────────
-const TA_LOGO_B64 = 'iVBORw0KGgoAAAANSUhEUgAACO8AAAecCAYAAADooiMdAAAACXBIWXMAAC4jAAAuIwF4pT92AAAgAElEQVR4nOzdzXEU2dYG6rc77lzlAfJAeIDuOAfIA6ktII8FqC1gtwUqLDjqQY1PYcEHFlzwIGUBd5ApEDQN+qmqnT/PE6EQEB3NOxDnoNXvXuu3z58/BwAAAAAAAAAAOLzfawcAAAAAAAAAAIClUt4BAAAAAAAAAIBKlHcAAAAAAAAAAKCS/6d2AACAqemacnqA3+bjatN+PMDvAwAAACzEgWYa3WrTvj/A7wMAMBu/ff78uXYGAICd65ryPMnqzi8dDx93ff/PZPj5yd6C7c6HJN0Pfn373c8/Dh9ffq4UBAAAAOP2g5LN9z8/zj/nHEnyYvdpdu4myY/KPR/z7Qwjwz93d/7xfrVpfzQPAQCYNOUdAGD0vhtY3f3x3fLNcZJnh0k0K+/u/PjuQOzLj1ebdnvgTAAAADAbXVOO87Voc/fH5hpPd3eu8TFfyz/f/NhDJgBg7JR3AIAqvhtcnQ6f7/7a8yRHB4zEr33K18HXdvh8W/IxCAMAAGBx7jw4ui3iHOfrbGMKW3CW5u4m4+3w+ePw4QETAFCN8g4AsHNdU1b5OrR6Pvzy6fBZKWfebldfd99/du8eAACAKfnBfOPu5ymc3Obxbks+H4cP8w0AYK+UdwCAB/vB8Or4zocVz/zMbbnn4/BxO/ja1osEAADAUt3ZDHw75ziNcg73c3uya3vns3IPAPAoyjsAwA/dKegc59shlpXP7Mttsed2Y882znEBAACwA8N5q+N8nXEcR0GH/bk9PX778T79jEOxBwD4IeUdAFi4rim3A6vnUdBhvN7l68BrG6UeAAAAfuC7ks7tj20JZkxuiz3v73x+v9q0XcVMAEBlyjsAsBDflXROYwU08/Aud4Zdzm8BAAAsw3Du6vl3H0o6TN33j5eUegBgIZR3AGBm7txqP4010CzTp3w9v7WNQRcAAMCkDQ+Svv84qhoKDufumfGP8XgJAGZJeQcAJszwCu5NoQcAAGACfjDrcNobfuxDvp7d2casAwAmTXkHACbC8Ap27kPuFHpWm/Z95TwAAACL0jVlla+bg28/e5QEj+fxEgBMlPIOAIyQog5U8y7DcCt9oceACwAAYEeGecdpvpZ1ntXMAwuh0AMAE6C8AwAVDa/MbodWp/HKDMbkdjvPNn2Z52PVNAAAABPSNeU05h0wRrYRA8DIKO8AwIHd2apzOnw+qRoIeIhPGYo8UeYBAAD4xndlHVuEYVputxFvYzsPAByc8g4A7NkwuLq7WccrM5gPZR4AAGCxlHVg1j7k29PiH6umAYCZU94BgB0zuIJFuy3zXKcfbHmlBgAAzMawTfg0yVnMPGBpPGACgD1S3gGAJ1LWAT7i9pXa9WrTbutGAQAAeJiuKcf5WtY5jW3CwFfKPACwQ8o7APBAQyuz26GVsg5wXzf5OtS6NtQCAADGqGvK7czjNMlJ1TDAlCjzAMATKO8AwIMNrchuexuHOmTVkiM7IAIbkysKN5BIxnvITvIxjSgSJzjBHhPY6yyqMPmVX4PxVfhQAAAABJRU5ErkJggg==';
 const taLogoImage = new Image();
-taLogoImage.src = 'data:image/png;base64,' + TA_LOGO_B64;
+taLogoImage.src = "TA_Heart Pink White Bike (1).png";
+
 taLogoImage.onload = () => {
-  document.getElementById('taLogoImg').src = taLogoImage.src;
-  render();
+    document.getElementById("taLogoImg").src = taLogoImage.src;
+    render();
 };
 
 const ADMIN_CODE = 'TA2026';
