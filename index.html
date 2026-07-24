@@ -572,20 +572,22 @@ function render() {
   // Layout baseline is always 900px wide for Post proportions
   // Both formats are now 1080px wide so scale accordingly
   const wScale     = CW / 900;
-  const PAD_X_N    = 150 * wScale;
-  // Story: 160px wide day col; Post: 188px
-  const DAY_COL_N  = isStory ? 160 * wScale : 188 * wScale;
-  // Base row height — story gets more room per row to accommodate wrapping
-  const ENTRY_H_N  = isStory ? 120 : 92;
+
+  // Horizontal padding — more padding = narrower cards
+  // Post: 120px each side; Story: 80px each side
+  const PAD_X_N    = isStory ? 130 : 190;
+  // Story: 200px wide day col; Post: 188px
+  const DAY_COL_N  = isStory ? 200 : 188;
+  const ENTRY_H_N  = isStory ? 130 : 105;
   const CARD_PAD_N = isStory ? 14 : 10;
   const CARD_GAP_N = isStory ? 32 : 20;
   const HEADER_H_N = isStory ? 340 : 260;
   const FOOTER_H_N = isStory ? 220 : 140;
 
-  // ── FONT SIZES
-  const RIDE_FS    = isStory ? 28 : 28;   // ride title & time
-  const SUB_FS     = isStory ? 22 : 22;   // sub-label
-  const LOC_FS     = isStory ? 21 : 21;   // location
+  // ── FONT SIZES — story gets larger text for readability
+  const RIDE_FS    = isStory ? 38 : 28;   // ride title & time
+  const SUB_FS     = isStory ? 25 : 25;   // sub-label
+  const LOC_FS     = isStory ? 25 : 25;   // location
 
   // Helper: measure and wrap text into lines that fit maxW
   function wrapText(context, text, maxW, font) {
@@ -610,7 +612,7 @@ function render() {
   // We need PAD_X and DAY_COL to do this, so compute scale iteratively:
   // First pass with scale=1 to get natural height
   const S1 = v => v; // scale=1 pass
-  const CONTENT_W_NATURAL = CW - PAD_X_N*2 - DAY_COL_N - 20 - 20; // content area width
+  const CONTENT_W_NATURAL = CW - PAD_X_N*2*wScale - DAY_COL_N*wScale - 40; // content area width approx
 
   function measureCardH(sessions, sc) {
     const entryH_base = ENTRY_H_N * sc;
@@ -633,9 +635,9 @@ function render() {
   const scale = Math.min(1, CH / naturalH);
   const S = v => v * scale;
 
-  const PAD_X    = S(PAD_X_N);
+  const PAD_X    = S(PAD_X_N) * wScale;
   const CARD_W   = CW - PAD_X*2;
-  const DAY_COL  = S(DAY_COL_N);
+  const DAY_COL  = S(DAY_COL_N) * wScale;
   const CARD_PAD = S(CARD_PAD_N);
   const CARD_GAP = S(CARD_GAP_N);
   const HEADER_H = S(HEADER_H_N);
@@ -699,8 +701,9 @@ function render() {
 
   grouped.forEach(group => {
     const dateNum   = dateForDay(group.day);
-    const CONTENT_X = PAD_X + DAY_COL + S(20);
-    const RIGHT_X   = PAD_X + CARD_W  - S(20);
+    // Content area: tighter outer padding on post, slightly more on story
+    const CONTENT_X = PAD_X + DAY_COL + S(isStory ? 18 : 14);
+    const RIGHT_X   = PAD_X + CARD_W  - S(isStory ? 18 : 14);
     const availSubW = (RIGHT_X - CONTENT_X) * 0.5 - S(8);
     const availLocW = (RIGHT_X - CONTENT_X) * 0.5 - S(8);
     const lineH     = S(SUB_FS) + S(4);
@@ -739,11 +742,11 @@ function render() {
     const dayCX = PAD_X + DAY_COL/2;
     const dayCY = yPos + CH_c/2;
     if (isStory) {
-      txt(group.day.toUpperCase(), dayCX, dayCY - S(16), fsB(30), DAY_TEXT, 'center', 'middle');
-      txt(String(dateNum),         dayCX, dayCY + S(16), fsB(30), PINK,     'center', 'middle');
+      txt(group.day.toUpperCase(), dayCX, dayCY - S(20), fsB(40), DAY_TEXT, 'center', 'middle');
+      txt(String(dateNum),         dayCX, dayCY + S(20), fsB(40), PINK,     'center', 'middle');
     } else {
-      txt(group.day.toUpperCase(), dayCX, dayCY - S(14), fsB(30), DAY_TEXT, 'center', 'middle');
-      txt(String(dateNum),         dayCX, dayCY + S(14), fsB(30), PINK,     'center', 'middle');
+      txt(group.day.toUpperCase(), dayCX, dayCY - S(20), fsB(40), DAY_TEXT, 'center', 'middle');
+      txt(String(dateNum),         dayCX, dayCY + S(20), fsB(40), PINK,     'center', 'middle');
     }
 
     // Separator line
@@ -767,8 +770,8 @@ function render() {
       }
 
       const DOT_R     = S(12);
-      const DOT_X     = CONTENT_X + S(10);
-      const TEXT_X    = DOT_X + DOT_R + S(12);
+      const DOT_X     = CONTENT_X + S(20);   // more breathing room from day col
+      const TEXT_X    = DOT_X + DOT_R + S(14);
       const typeColor = TC[s.type] || PINK;
 
       // Title and time always share the same font size
@@ -777,13 +780,13 @@ function render() {
       txt(s.name, TEXT_X,  titleCY, fsB(RIDE_FS), RIDE_NAME, 'left',  'middle');
       txt(s.time, RIGHT_X, titleCY, fsB(RIDE_FS), TIME_COL,  'right', 'middle');
 
-      // Sub-label — single line (post) or wrapped (story)
-      const subY0 = rowCY + S(14);
+      // Sub-label — small gap below ride title (consistent across both formats)
+      const subY0 = rowCY + S(14) + S(8);
       meta.subLines.forEach((line, li) => {
         txt(line, TEXT_X, subY0 + li * lineH, fs(SUB_FS), SUB_COL, 'left', 'middle');
       });
 
-      // Location — right-aligned, wrapped in story
+      // Location — same gap below time
       const locY0 = subY0;
       meta.locLines.forEach((line, li) => {
         txt(line, RIGHT_X, locY0 + li * lineH, fs(LOC_FS), LOC_COL, 'right', 'middle');
