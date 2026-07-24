@@ -573,8 +573,8 @@ function render() {
   // Both formats are now 1080px wide so scale accordingly
   const wScale     = CW / 900;
   const PAD_X_N    = 150 * wScale;
-  // Story: 110px wide day col; Post: 188px
-  const DAY_COL_N  = isStory ? 110 * wScale : 188 * wScale;
+  // Story: 160px wide day col; Post: 188px
+  const DAY_COL_N  = isStory ? 160 * wScale : 188 * wScale;
   // Base row height — story gets more room per row to accommodate wrapping
   const ENTRY_H_N  = isStory ? 120 : 92;
   const CARD_PAD_N = isStory ? 14 : 10;
@@ -582,10 +582,10 @@ function render() {
   const HEADER_H_N = isStory ? 340 : 260;
   const FOOTER_H_N = isStory ? 220 : 140;
 
-  // ── FONT SIZES — story gets larger text for readability
-  const RIDE_FS    = isStory ? 28 : 21;
-  const SUB_FS     = isStory ? 22 : 17;
-  const LOC_FS     = isStory ? 21 : 16;
+  // ── FONT SIZES
+  const RIDE_FS    = isStory ? 28 : 28;   // ride title & time
+  const SUB_FS     = isStory ? 22 : 22;   // sub-label
+  const LOC_FS     = isStory ? 21 : 21;   // location
 
   // Helper: measure and wrap text into lines that fit maxW
   function wrapText(context, text, maxW, font) {
@@ -739,12 +739,11 @@ function render() {
     const dayCX = PAD_X + DAY_COL/2;
     const dayCY = yPos + CH_c/2;
     if (isStory) {
-      // Story: full day name + date stacked, both centred
-      txt(group.day.toUpperCase(), dayCX, dayCY - S(16), fsB(22), DAY_TEXT, 'center', 'middle');
-      txt(String(dateNum),         dayCX, dayCY + S(16), fsB(22), PINK,     'center', 'middle');
+      txt(group.day.toUpperCase(), dayCX, dayCY - S(16), fsB(30), DAY_TEXT, 'center', 'middle');
+      txt(String(dateNum),         dayCX, dayCY + S(16), fsB(30), PINK,     'center', 'middle');
     } else {
-      txt(group.day.toUpperCase(), dayCX, dayCY - S(14), fsB(20), DAY_TEXT, 'center', 'middle');
-      txt(String(dateNum),         dayCX, dayCY + S(14), fsB(24), PINK,     'center', 'middle');
+      txt(group.day.toUpperCase(), dayCX, dayCY - S(14), fsB(30), DAY_TEXT, 'center', 'middle');
+      txt(String(dateNum),         dayCX, dayCY + S(14), fsB(30), PINK,     'center', 'middle');
     }
 
     // Separator line
@@ -767,7 +766,7 @@ function render() {
         ctx.beginPath(); ctx.moveTo(CONTENT_X, rowTop); ctx.lineTo(RIGHT_X, rowTop); ctx.stroke();
       }
 
-      const DOT_R     = isStory ? S(10) : S(8);
+      const DOT_R     = S(12);
       const DOT_X     = CONTENT_X + S(10);
       const TEXT_X    = DOT_X + DOT_R + S(12);
       const typeColor = TC[s.type] || PINK;
