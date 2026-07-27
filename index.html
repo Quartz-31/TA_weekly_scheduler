@@ -220,6 +220,19 @@ input:focus, select:focus { border-color: var(--pink); background: #fff; }
 </div>
 
 <script>
+  const BACKEND = 'https://ta-weekly-scheduler.onrender.com'; // your Render URL
+let schedulerCode = '';
+
+async function apiFetch(path, method = 'GET', body = null) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json', 'X-Scheduler-Code': schedulerCode }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(BACKEND + path, opts);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
 // ── LOGO ─────────────────────────────────────────────────────────────────
 const taLogoImage = new Image();
 taLogoImage.src = "TA_logo";
@@ -768,12 +781,82 @@ const defaults=[
   {day:'Fri',name:'MTB: Trail Day'},{day:'Fri',name:'Skills with Viv'},
   {day:'Sat',name:'Group Skills with Viv'},
 ];
-initDates();
-defaults.forEach(d=>{
-  const idx=rideTypes.findIndex(r=>r.name===d.name);if(idx<0)return;
-  entries.push({id:entryId++,day:d.day,rideTypeIdx:idx,time:rideTypes[idx].time,location:rideTypes[idx].location,collapsed:true});
-});
-sortEntries();rebuildUI();render();
+
+const BACKEND = 'https://ta-weekly-scheduler.onrender.com'; // ← paste your Render URL here
+let schedulerCode = '';
+
+async function apiFetch(path, method='GET', body=null) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json', 'X-Scheduler-Code': schedulerCode }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(BACKEND + path, opts);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+function buildState() {
+  return {
+    startDate: document.getElementById('startDate').value,
+    tagline: document.getElementById('tagline').value,
+    entries,
+    rideTypes,
+    entryId
+  };
+}
+
+function applyState(state) {
+  if (!state || !state.entries) return false;
+  document.getElementById('startDate').value = state.startDate || '';
+  document.getElementById('tagline').value = state.tagline || 'Your trail family is waiting.';
+  entries = state.entries;
+  rideTypes = state.rideTypes;
+  entryId = state.entryId || entries.length;
+  onStartChange();
+  return true;
+}
+
+let saveTimer = null;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try { await apiFetch('/schedule', 'POST', buildState()); }
+    catch(e) { console.warn('Save failed:', e.message); }
+  }, 1200);
+}
+
+async function boot() {
+  const code = prompt('Enter access code:');
+  if (!code) return;
+  schedulerCode = code;
+
+  try {
+    const saved = await apiFetch('/schedule');
+    const loaded = applyState(saved);
+    if (!loaded) {
+      initDates();
+      defaults.forEach(d => {
+        const idx = rideTypes.findIndex(r => r.name === d.name); if (idx < 0) return;
+        entries.push({ id: entryId++, day: d.day, rideTypeIdx: idx, time: rideTypes[idx].time, location: rideTypes[idx].location, collapsed: true });
+      });
+    }
+  } catch(e) {
+    alert('Wrong code or backend unreachable.');
+    return;
+  }
+
+  sortEntries(); rebuildUI(); render();
+
+  const _confirmAdd = confirmAdd;
+  confirmAdd = function() { _confirmAdd(); scheduleSave(); };
+  const _removeEntry = removeEntry;
+  removeEntry = function(id) { _removeEntry(id); scheduleSave(); };
+  document.getElementById('tagline').addEventListener('input', scheduleSave);
+  document.getElementById('startDate').addEventListener('change', scheduleSave);
+}
+
+boot();
 </script>
 </body>
 </html>
