@@ -81,6 +81,11 @@ input:focus, select:focus { border-color: var(--pink); background: #fff; }
 .btn-canva svg { width: 16px; height: 16px; flex-shrink: 0; }
 .canva-status { font-size: 11px; color: #888; text-align: center; min-height: 16px; }
 
+.save-status { font-size: 11px; color: #aaa; text-align: center; min-height: 16px; transition: color 0.3s; }
+.save-status.saving { color: var(--orange); }
+.save-status.saved { color: var(--teal); }
+.save-status.error { color: var(--pink); }
+
 .admin-section { margin-top: 16px; border-top: 1px solid #eee; padding-top: 14px; }
 .admin-toggle { background: none; border: none; font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600; color: var(--navy); cursor: pointer; display: flex; align-items: center; gap: 5px; padding: 0; }
 .admin-toggle::after { content: '▾'; }
@@ -97,6 +102,17 @@ input:focus, select:focus { border-color: var(--pink); background: #fff; }
 .tag-Hike { background: #d1fae5; color: #064e3b; }
 .admin-error { color: var(--pink); font-size: 11px; margin-top: 5px; display: none; }
 .btn-sm { padding: 6px 12px; border: none; border-radius: 5px; font-size: 11px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; }
+
+/* Auth overlay */
+.auth-overlay { position: fixed; inset: 0; background: var(--navy); display: flex; align-items: center; justify-content: center; z-index: 999; }
+.auth-box { background: #fff; border-radius: 14px; padding: 32px 28px; width: 320px; text-align: center; }
+.auth-box h2 { font-size: 18px; font-weight: 800; color: var(--navy); margin-bottom: 6px; }
+.auth-box p { font-size: 13px; color: #888; margin-bottom: 20px; }
+.auth-box input { width: 100%; padding: 11px 14px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 15px; font-family: 'Inter', sans-serif; text-align: center; letter-spacing: 2px; outline: none; margin-bottom: 12px; }
+.auth-box input:focus { border-color: var(--pink); }
+.auth-box button { width: 100%; padding: 12px; background: var(--pink); border: none; border-radius: 8px; color: #fff; font-size: 14px; font-weight: 700; font-family: 'Inter', sans-serif; cursor: pointer; }
+.auth-box button:hover { background: #c8257a; }
+.auth-error { color: var(--pink); font-size: 12px; margin-top: 8px; min-height: 18px; }
 
 .preview-pane { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 28px 32px; overflow: hidden; background: #e0e0e0; position: relative; }
 .preview-top { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-bottom: 14px; }
@@ -124,7 +140,19 @@ input:focus, select:focus { border-color: var(--pink); background: #fff; }
 </style>
 </head>
 <body>
-<div class="app">
+
+<!-- Auth overlay -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-box">
+    <h2>Trail Angels</h2>
+    <p>Schedule Builder — enter your access code to continue</p>
+    <input type="password" id="authInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')doAuth()">
+    <button onclick="doAuth()">Enter</button>
+    <div class="auth-error" id="authError"></div>
+  </div>
+</div>
+
+<div class="app" id="mainApp" style="display:none;">
   <aside class="sidebar">
     <div class="sidebar-header">
       <div class="sidebar-logo"><img id="taLogoImg" src="" alt="Trail Angels"></div>
@@ -136,7 +164,7 @@ input:focus, select:focus { border-color: var(--pink); background: #fff; }
         <div class="field"><label>Start (Mon)</label><input type="date" id="startDate" oninput="onStartChange()"></div>
         <div class="field"><label>End (Sun)</label><input type="date" id="endDate" readonly style="background:#f0f0f0;color:#999;"></div>
       </div>
-      <div class="field"><label>Tagline</label><input type="text" id="tagline" value="Your trail family is waiting." oninput="render()"></div>
+      <div class="field"><label>Tagline</label><input type="text" id="tagline" value="Your trail family is waiting." oninput="render();scheduleSave()"></div>
 
       <div class="sec-label">Sessions</div>
       <div id="dayGroups"></div>
@@ -189,6 +217,7 @@ input:focus, select:focus { border-color: var(--pink); background: #fff; }
       </div>
     </div>
     <div class="sidebar-footer">
+      <div class="save-status" id="saveStatus"></div>
       <div class="format-toggle">
         <button class="fmt-btn active" id="fmtPost" onclick="setFormat('post')">📱 Post (3:4)</button>
         <button class="fmt-btn" id="fmtStory" onclick="setFormat('story')">📲 Story (9:16)</button>
@@ -220,7 +249,8 @@ input:focus, select:focus { border-color: var(--pink); background: #fff; }
 </div>
 
 <script>
-  const BACKEND = 'https://ta-weekly-scheduler.onrender.com'; // your Render URL
+// ── BACKEND CONFIG ────────────────────────────────────────────────────────────
+const BACKEND = 'https://ta-weekly-scheduler.onrender.com'; // ← replace with your Render URL
 let schedulerCode = '';
 
 async function apiFetch(path, method = 'GET', body = null) {
@@ -233,13 +263,81 @@ async function apiFetch(path, method = 'GET', body = null) {
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
-// ── LOGO ─────────────────────────────────────────────────────────────────
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+async function doAuth() {
+  const code = document.getElementById('authInput').value.trim();
+  if (!code) return;
+  schedulerCode = code;
+  document.getElementById('authError').textContent = '';
+  try {
+    const saved = await apiFetch('/schedule');
+    document.getElementById('authOverlay').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'flex';
+    const loaded = applyState(saved);
+    if (!loaded) {
+      initDates();
+      defaults.forEach(d => {
+        const idx = rideTypes.findIndex(r => r.name === d.name); if (idx < 0) return;
+        entries.push({ id: entryId++, day: d.day, rideTypeIdx: idx, time: rideTypes[idx].time, location: rideTypes[idx].location, collapsed: true });
+      });
+    }
+    sortEntries(); rebuildUI(); render();
+  } catch(e) {
+    schedulerCode = '';
+    document.getElementById('authError').textContent = 'Wrong code or server unreachable. Try again.';
+  }
+}
+
+// ── SAVE / LOAD ───────────────────────────────────────────────────────────────
+function buildState() {
+  return {
+    startDate: document.getElementById('startDate').value,
+    tagline: document.getElementById('tagline').value,
+    entries,
+    rideTypes,
+    entryId
+  };
+}
+
+function applyState(state) {
+  if (!state || !state.entries) return false;
+  document.getElementById('startDate').value = state.startDate || '';
+  document.getElementById('tagline').value = state.tagline || 'Your trail family is waiting.';
+  entries = state.entries;
+  rideTypes = state.rideTypes || rideTypes;
+  entryId = state.entryId || entries.length;
+  onStartChange();
+  return true;
+}
+
+function setSaveStatus(msg, cls) {
+  const el = document.getElementById('saveStatus');
+  el.textContent = msg;
+  el.className = 'save-status ' + (cls || '');
+}
+
+let saveTimer = null;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  setSaveStatus('Unsaved changes…', 'saving');
+  saveTimer = setTimeout(async () => {
+    try {
+      await apiFetch('/schedule', 'POST', buildState());
+      setSaveStatus('✓ Saved', 'saved');
+      setTimeout(() => setSaveStatus(''), 3000);
+    } catch(e) {
+      setSaveStatus('⚠ Save failed', 'error');
+    }
+  }, 1200);
+}
+
+// ── LOGO ─────────────────────────────────────────────────────────────────────
 const taLogoImage = new Image();
 taLogoImage.src = "TA_logo";
-
 taLogoImage.onload = () => {
-    document.getElementById("taLogoImg").src = taLogoImage.src;
-    render();
+  document.getElementById("taLogoImg").src = taLogoImage.src;
+  render();
 };
 
 const ADMIN_CODE = 'TA2026';
@@ -261,6 +359,16 @@ let rideTypes = [
 ];
 
 let entries = [], entryId = 0;
+
+const defaults=[
+  {day:'Mon',name:'Back on the Trails'},{day:'Mon',name:'Gravel: Sunset Ride'},
+  {day:'Tue',name:'MTB: Team Tuesday'},
+  {day:'Wed',name:'MTB: Community Ride'},{day:'Wed',name:'MTB: Newbie Ride'},
+  {day:'Wed',name:'Skills with Barbs'},{day:'Wed',name:'Gravel for All'},
+  {day:'Thu',name:'Hike'},{day:'Thu',name:'Gravel: Sunset Ride'},
+  {day:'Fri',name:'MTB: Trail Day'},{day:'Fri',name:'Skills with Viv'},
+  {day:'Sat',name:'Group Skills with Viv'},
+];
 
 function toISO(d) {
   const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
@@ -288,7 +396,7 @@ function onStartChange() {
   const mon = snapToMonday(val), sun = new Date(mon); sun.setDate(mon.getDate()+6);
   document.getElementById('startDate').value = toISO(mon);
   document.getElementById('endDate').value = toISO(sun);
-  rebuildUI(); render();
+  rebuildUI(); render(); scheduleSave();
 }
 function dateForDay(dayName) {
   const iso = document.getElementById('startDate').value; if (!iso) return '';
@@ -331,7 +439,7 @@ function confirmAdd() {
   entries.push({id:entryId++,day:document.getElementById('newDay').value,
     rideTypeIdx:idx,time:document.getElementById('newTime').value,
     location:document.getElementById('newLoc').value,collapsed:true});
-  sortEntries(); rebuildUI(); render(); closeAddPanel();
+  sortEntries(); rebuildUI(); render(); closeAddPanel(); scheduleSave();
 }
 function parseTime(s) {
   if(!s)return 9999;
@@ -345,7 +453,7 @@ function sortEntries() {
     return di!==0?di:parseTime(a.time)-parseTime(b.time);
   });
 }
-function removeEntry(id){entries=entries.filter(e=>e.id!==id);rebuildUI();render();}
+function removeEntry(id){entries=entries.filter(e=>e.id!==id);rebuildUI();render();scheduleSave();}
 function onRidePick(id){
   const entry=entries.find(e=>e.id===id);
   const idx=parseInt(document.getElementById(`ride-${id}`).value);
@@ -355,14 +463,14 @@ function onRidePick(id){
     document.getElementById(`time-${id}`).value=entry.time;
     document.getElementById(`loc-${id}`).value=entry.location;
   }
-  sortEntries();rebuildUI();render();
+  sortEntries();rebuildUI();render();scheduleSave();
 }
-function onDayChange(id){entries.find(e=>e.id===id).day=document.getElementById(`day-${id}`).value;sortEntries();rebuildUI();render();}
+function onDayChange(id){entries.find(e=>e.id===id).day=document.getElementById(`day-${id}`).value;sortEntries();rebuildUI();render();scheduleSave();}
 function onFieldChange(id){
   const e=entries.find(e=>e.id===id);
   const t=document.getElementById(`time-${id}`);if(t)e.time=t.value;
   const l=document.getElementById(`loc-${id}`);if(l)e.location=l.value;
-  render();
+  render();scheduleSave();
 }
 function toggleRideCard(id){
   const e=entries.find(e=>e.id===id);e.collapsed=!e.collapsed;
@@ -439,16 +547,16 @@ function renderAdminList(){
 function deleteRideType(i){
   rideTypes.splice(i,1);
   entries.forEach(e=>{if(e.rideTypeIdx===i)e.rideTypeIdx=-1;else if(e.rideTypeIdx>i)e.rideTypeIdx--;});
-  renderAdminList();rebuildUI();render();
+  renderAdminList();rebuildUI();render();scheduleSave();
 }
 function addRideType(){
   const name=document.getElementById('nName').value.trim();if(!name)return;
   rideTypes.push({name,type:document.getElementById('nType').value,time:document.getElementById('nTime').value.trim(),location:document.getElementById('nLoc').value.trim(),sub:document.getElementById('nSub').value.trim()});
-  renderAdminList();rebuildUI();
+  renderAdminList();rebuildUI();scheduleSave();
   ['nName','nTime','nLoc','nSub'].forEach(id=>document.getElementById(id).value='');
 }
 
-// ── CANVAS ────────────────────────────────────────────────────────────────
+// ── CANVAS ────────────────────────────────────────────────────────────────────
 function drawHeart(ctx,cx,cy,heartH,fillColor){
   ctx.save();ctx.translate(cx,cy);const scale=heartH/32;ctx.beginPath();
   for(let i=0;i<=360;i++){const t=(i*Math.PI)/180;
@@ -518,7 +626,6 @@ function render(){
   const isStory=currentFormat==='story';
   const wScale=CW/900;
 
-  // Layout
   const PAD_X_N    = isStory ? 130 : 190;
   const DAY_COL_N  = isStory ? 200 : 188;
   const CARD_GAP_N = isStory ? 32 : 20;
@@ -526,21 +633,14 @@ function render(){
   const FOOTER_H_N = isStory ? 220 : 140;
   const CARD_PAD_N = isStory ? 18 : 14;
 
-  // ── FONT SIZES (increased for phone readability)
-  const RIDE_FS  = isStory ? 46 : 36;   // ride name + time  (was 38/28)
-  const SUB_FS   = isStory ? 32 : 28;   // sub-label         (was 25/25)
-  const LOC_FS   = isStory ? 32 : 28;   // location          (was 25/25)
-  const DAY_FS   = isStory ? 52 : 46;   // day name          (was 40/40)
-  const DATE_FS  = isStory ? 52 : 46;   // date number       (was 40/40)
-
-  // ── DOT RADIUS (increased)
-  const DOT_R_N  = isStory ? 18 : 16;   // was 12/12
-
-  // ── ROW GAP between title row and sub/loc row (new)
+  const RIDE_FS  = isStory ? 46 : 36;
+  const SUB_FS   = isStory ? 32 : 28;
+  const LOC_FS   = isStory ? 32 : 28;
+  const DAY_FS   = isStory ? 52 : 46;
+  const DATE_FS  = isStory ? 52 : 46;
+  const DOT_R_N  = isStory ? 18 : 16;
   const ROW_GAP_N = isStory ? 20 : 16;
-
-  // ── ENTRY HEIGHT (taller to accommodate bigger text + gap)
-  const ENTRY_H_N = isStory ? 160 : 130; // was 130/105
+  const ENTRY_H_N = isStory ? 160 : 130;
 
   const fs  = b=>`${Math.max(10,Math.round(b*scale))}px Inter, Arial`;
   const fsB = b=>`bold ${Math.max(10,Math.round(b*scale))}px Inter, Arial`;
@@ -572,10 +672,8 @@ function render(){
   const DOT_R   = S(DOT_R_N);
   const ROW_GAP = S(ROW_GAP_N);
 
-  // Background
   ctx.fillStyle=BG;ctx.fillRect(0,0,CW,CH);
 
-  // Header
   const logoH=S(80);
   const logoW=logoH*(taLogoImage.naturalWidth/(taLogoImage.naturalHeight||1));
   const heartGap=S(22);
@@ -605,7 +703,6 @@ function render(){
     tx+=TW+TGAP;
   });
 
-  // Cards
   let yPos=HEADER_H;
 
   grouped.forEach(group=>{
@@ -627,7 +724,6 @@ function render(){
 
     rrect(PAD_X,yPos,CARD_W,CH_c,S(20),CARD_BG,'#e8e8e8',1);
 
-    // Day column with rounded left corners
     ctx.save();ctx.beginPath();
     const r=S(20);
     ctx.moveTo(PAD_X+r,yPos);ctx.lineTo(PAD_X+DAY_COL,yPos);
@@ -636,7 +732,6 @@ function render(){
     ctx.lineTo(PAD_X,yPos+r);ctx.quadraticCurveTo(PAD_X,yPos,PAD_X+r,yPos);
     ctx.closePath();ctx.fillStyle=DAY_BG;ctx.fill();ctx.restore();
 
-    // Day name + date — centred as a paired block (LARGER font)
     const dayCX=PAD_X+DAY_COL/2;const dayCY=yPos+CH_c/2;
     const dayFont=fsB(DAY_FS);const dateFont=fsB(DATE_FS);
     const dayTextH=DAY_FS*scale;const dateTextH=DATE_FS*scale;
@@ -645,11 +740,9 @@ function render(){
     txt(group.day.toUpperCase(),dayCX,dayCY-pairH/2+dayTextH/2,dayFont,'#ffffff','center','middle');
     txt(String(dateNum),dayCX,dayCY+pairH/2-dateTextH/2,dateFont,PINK,'center','middle');
 
-    // Separator
     ctx.strokeStyle='#e0c8d4';ctx.lineWidth=1;
     ctx.beginPath();ctx.moveTo(PAD_X+DAY_COL,yPos+S(8));ctx.lineTo(PAD_X+DAY_COL,yPos+CH_c-S(8));ctx.stroke();
 
-    // Sessions
     let rowTop=yPos+CARD_PAD;
     group.sessions.forEach((s,i)=>{
       const meta=sessionMeta[i];const rowH=meta.rowH;const rowCY=rowTop+rowH/2;
@@ -658,8 +751,6 @@ function render(){
         ctx.beginPath();ctx.moveTo(CONTENT_X,rowTop);ctx.lineTo(RIGHT_X,rowTop);ctx.stroke();}
 
       const typeColor=TC[s.type]||PINK;
-
-      // Two-row layout with explicit gap
       const titleH=S(RIDE_FS);const subH=S(SUB_FS);
       const contentH=titleH+ROW_GAP+subH;
       const blockTop=rowCY-contentH/2;
@@ -669,12 +760,10 @@ function render(){
       const DOT_X=CONTENT_X+DOT_R+S(10);
       const TEXT_X=DOT_X+DOT_R+S(14);
 
-      // Title row: dot + name (left) | time (right)
       circ(DOT_X,titleY,DOT_R,typeColor);
       txt(s.name,TEXT_X,titleY,fsB(RIDE_FS),RIDE_NAME,'left','middle');
       txt(s.time,RIGHT_X,titleY,fsB(RIDE_FS),TIME_COL,'right','middle');
 
-      // Sub/location row (below gap)
       meta.subLines.forEach((line,li)=>{
         txt(line,TEXT_X,subY+li*S(SUB_FS+4),fs(SUB_FS),SUB_COL,'left','middle');
       });
@@ -688,7 +777,6 @@ function render(){
     yPos+=CH_c+CARD_GAP;
   });
 
-  // Footer
   const footerSpace=CH-yPos;
   const footerCY=yPos+footerSpace/2-S(34);
   txt(dateRange,CW/2,footerCY,fsB(28),WHITE,'center','middle');
@@ -697,7 +785,7 @@ function render(){
   txt(tagline,CW/2,footerCY+S(68),fsB(28),WHITE,'center','middle');
 }
 
-// Download
+// ── DOWNLOAD ──────────────────────────────────────────────────────────────────
 function download(){
   render();
   setTimeout(()=>{
@@ -718,7 +806,7 @@ function fallbackDownload(dataURL){
   a.href=dataURL;a.click();
 }
 
-// Canva export
+// ── CANVA EXPORT ──────────────────────────────────────────────────────────────
 async function exportToCanva(){
   const btn=document.querySelector('.btn-canva');const status=document.getElementById('canvaStatus');
   try{
@@ -747,7 +835,7 @@ async function exportToCanva(){
   finally{btn.disabled=false;btn.innerHTML=`<svg viewBox="0 0 24 24" fill="white" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg> Export to Canva`;}
 }
 
-// Zoom
+// ── ZOOM ──────────────────────────────────────────────────────────────────────
 let zoomLevel=1.0;
 function applyZoom(){
   const wrap=document.getElementById('canvasWrap');
@@ -770,93 +858,6 @@ document.getElementById('previewViewport').addEventListener('touchmove',function
     if(lastPinchDist!==null){zoomLevel=Math.min(3,Math.max(0.3,zoomLevel+(dist-lastPinchDist)*0.005));applyZoom();}
     lastPinchDist=dist;}},{passive:false});
 document.getElementById('previewViewport').addEventListener('touchend',()=>{lastPinchDist=null;});
-
-// Init
-const defaults=[
-  {day:'Mon',name:'Back on the Trails'},{day:'Mon',name:'Gravel: Sunset Ride'},
-  {day:'Tue',name:'MTB: Team Tuesday'},
-  {day:'Wed',name:'MTB: Community Ride'},{day:'Wed',name:'MTB: Newbie Ride'},
-  {day:'Wed',name:'Skills with Barbs'},{day:'Wed',name:'Gravel for All'},
-  {day:'Thu',name:'Hike'},{day:'Thu',name:'Gravel: Sunset Ride'},
-  {day:'Fri',name:'MTB: Trail Day'},{day:'Fri',name:'Skills with Viv'},
-  {day:'Sat',name:'Group Skills with Viv'},
-];
-
-const BACKEND = 'https://ta-weekly-scheduler.onrender.com'; // ← paste your Render URL here
-let schedulerCode = '';
-
-async function apiFetch(path, method='GET', body=null) {
-  const opts = {
-    method,
-    headers: { 'Content-Type': 'application/json', 'X-Scheduler-Code': schedulerCode }
-  };
-  if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(BACKEND + path, opts);
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-function buildState() {
-  return {
-    startDate: document.getElementById('startDate').value,
-    tagline: document.getElementById('tagline').value,
-    entries,
-    rideTypes,
-    entryId
-  };
-}
-
-function applyState(state) {
-  if (!state || !state.entries) return false;
-  document.getElementById('startDate').value = state.startDate || '';
-  document.getElementById('tagline').value = state.tagline || 'Your trail family is waiting.';
-  entries = state.entries;
-  rideTypes = state.rideTypes;
-  entryId = state.entryId || entries.length;
-  onStartChange();
-  return true;
-}
-
-let saveTimer = null;
-function scheduleSave() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(async () => {
-    try { await apiFetch('/schedule', 'POST', buildState()); }
-    catch(e) { console.warn('Save failed:', e.message); }
-  }, 1200);
-}
-
-async function boot() {
-  const code = prompt('Enter access code:');
-  if (!code) return;
-  schedulerCode = code;
-
-  try {
-    const saved = await apiFetch('/schedule');
-    const loaded = applyState(saved);
-    if (!loaded) {
-      initDates();
-      defaults.forEach(d => {
-        const idx = rideTypes.findIndex(r => r.name === d.name); if (idx < 0) return;
-        entries.push({ id: entryId++, day: d.day, rideTypeIdx: idx, time: rideTypes[idx].time, location: rideTypes[idx].location, collapsed: true });
-      });
-    }
-  } catch(e) {
-    alert('Wrong code or backend unreachable.');
-    return;
-  }
-
-  sortEntries(); rebuildUI(); render();
-
-  const _confirmAdd = confirmAdd;
-  confirmAdd = function() { _confirmAdd(); scheduleSave(); };
-  const _removeEntry = removeEntry;
-  removeEntry = function(id) { _removeEntry(id); scheduleSave(); };
-  document.getElementById('tagline').addEventListener('input', scheduleSave);
-  document.getElementById('startDate').addEventListener('change', scheduleSave);
-}
-
-boot();
 </script>
 </body>
 </html>
