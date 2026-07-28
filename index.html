@@ -345,17 +345,17 @@ const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const TYPE_COLORS = { MTB:'#E8318A', Gravel:'#F6A623', Skills:'#3B82F6', Hike:'#2ECC8E' };
 
 let rideTypes = [
-  { name:'Back on the Trails',    type:'MTB',    time:'8:30am – 10:30am', location:'Tokai Picnic Area',                    sub:'All riders welcome' },
-  { name:'MTB: Team Tuesday',     type:'MTB',    time:'8am – 11am',       location:'Tokai / Clovelly loop',               sub:'Intermediates / Racing Snakes' },
-  { name:'MTB: Community Ride',   type:'MTB',    time:'8:30am – 10:30am', location:'Tokai Picnic Area',                   sub:'All riders welcome' },
-  { name:'MTB: Newbie Ride',      type:'MTB',    time:'8:30am – 10:30am', location:'Tokai Picnic Area',                   sub:'All riders welcome' },
-  { name:'MTB: Trail Day',        type:'MTB',    time:'8:30am – 10:30am', location:'Tokai Picnic Area',                   sub:'All riders welcome' },
-  { name:'Gravel: Sunset Ride',   type:'Gravel', time:'5pm – 6:30pm',     location:'Bootleggers Tokai',                   sub:'All riders welcome' },
-  { name:'Gravel for All',        type:'Gravel', time:'8:30am – 10:30am', location:'Tokai Picnic Area',                   sub:'All riders welcome' },
-  { name:'Skills with Barbs',     type:'Skills', time:'10:30am – 12pm',   location:'Tokai Picnic Area',                   sub:'1-on-1 skills' },
-  { name:'Skills with Viv',       type:'Skills', time:'10:30am – 12pm',   location:'Tokai Picnic Area',                   sub:'1-on-1 skills' },
-  { name:'Group Skills with Viv', type:'Skills', time:'9am – 11am',       location:'Aandwind Park, Kirstenhof',           sub:'Newbie riders' },
-  { name:'Hike',                  type:'Hike',   time:'8am – 10:30am',    location:'Silvermine Gate 2: Amphitheatre loop', sub:'All hikers welcome' },
+  { name:'Back on the Trails',    type:'MTB',    time:'8:30a – 10:30', location:'Tokai Picnic Area',                    sub:'All riders welcome' },
+  { name:'MTB: Team Tuesday',     type:'MTB',    time:'8:00 – 11:00',       location:'Tokai / Clovelly loop',               sub:'Intermediates / Racing Snakes' },
+  { name:'MTB: Community Ride',   type:'MTB',    time:'8:30 – 10:30', location:'Tokai Picnic Area',                   sub:'All riders welcome' },
+  { name:'MTB: Newbie Ride',      type:'MTB',    time:'8:30 – 10:30', location:'Tokai Picnic Area',                   sub:'All riders welcome' },
+  { name:'MTB: Trail Day',        type:'MTB',    time:'8:30 – 10:30', location:'Tokai Picnic Area',                   sub:'All riders welcome' },
+  { name:'Gravel: Sunset Ride',   type:'Gravel', time:'17:00 – 18:30',     location:'Bootleggers Tokai',                   sub:'All riders welcome' },
+  { name:'Gravel for All',        type:'Gravel', time:'8:30 – 10:30', location:'Tokai Picnic Area',                   sub:'All riders welcome' },
+  { name:'Skills with Barbs',     type:'Skills', time:'10:30 – 12',   location:'Tokai Picnic Area',                   sub:'1-on-1 skills' },
+  { name:'Skills with Viv',       type:'Skills', time:'10:30 – 12:00',   location:'Tokai Picnic Area',                   sub:'1-on-1 skills' },
+  { name:'Group Skills with Viv', type:'Skills', time:'9:00 – 11:00',       location:'Aandwind Park, Kirstenhof',           sub:'Newbie riders' },
+  { name:'Hike',                  type:'Hike',   time:'8:00 – 10:30',    location:'Silvermine Gate 2: Amphitheatre loop', sub:'All hikers welcome' },
 ];
 
 let entries = [], entryId = 0;
@@ -442,8 +442,10 @@ function confirmAdd() {
   sortEntries(); rebuildUI(); render(); closeAddPanel(); scheduleSave();
 }
 function parseTime(s) {
-  if(!s)return 9999;
-  const m=s.match(/(\d+)(?::(\d+))?\s*(am|pm)/i); if(!m)return 9999;
+  if(!s) return 9999;
+  const m24=s.match(/^(\d{1,2}):(\d{2})/);
+  if(m24) return parseInt(m24[1])*60+parseInt(m24[2]);
+  const m=s.match(/(\d+)(?::(\d+))?\s*(am|pm)/i); if(!m) return 9999;
   let h=parseInt(m[1]),min=parseInt(m[2]||'0'),ap=m[3].toLowerCase();
   if(ap==='pm'&&h!==12)h+=12; if(ap==='am'&&h===12)h=0; return h*60+min;
 }
