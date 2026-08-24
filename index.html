@@ -540,11 +540,52 @@ function checkCode(){
 }
 function renderAdminList(){
   document.getElementById('adminList').innerHTML=rideTypes.map((r,i)=>`
-    <div class="admin-item">
+    <div class="admin-item" id="ari-${i}">
       <span class="tag tag-${r.type}">${r.type}</span>
       <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.name}</span>
+      <button onclick="openEditRideType(${i})" style="background:none;border:none;color:#888;cursor:pointer;font-size:11px;font-weight:600;padding:2px 6px;">✏</button>
       <button onclick="deleteRideType(${i})" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:13px;">×</button>
+    </div>
+    <div id="are-${i}" style="display:none;background:#fff;border:1px solid #c5d0f0;border-radius:6px;padding:10px;margin:4px 0 6px;">
+      <div class="field"><label>Name</label><input type="text" id="eName-${i}" value="${r.name.replace(/"/g,'&quot;')}"></div>
+      <div class="row2">
+        <div class="field"><label>Type</label>
+          <select id="eType-${i}">
+            ${['MTB','Gravel','Skills','Hike'].map(t=>`<option${t===r.type?' selected':''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><label>Default time</label><input type="text" id="eTime-${i}" value="${r.time.replace(/"/g,'&quot;')}"></div>
+      </div>
+      <div class="field"><label>Location</label><input type="text" id="eLoc-${i}" value="${r.location.replace(/"/g,'&quot;')}"></div>
+      <div class="field"><label>Sub-label</label><input type="text" id="eSub-${i}" value="${(r.sub||'').replace(/"/g,'&quot;')}"></div>
+      <div style="display:flex;gap:6px;margin-top:4px;">
+        <button class="btn-sm" style="background:var(--pink);color:#fff;flex:1;" onclick="saveEditRideType(${i})">Save</button>
+        <button class="btn-sm" style="background:#eee;color:#666;flex:1;" onclick="closeEditRideType(${i})">Cancel</button>
+      </div>
     </div>`).join('');
+}
+function openEditRideType(i){
+  // close any other open editor first
+  rideTypes.forEach((_,j)=>{ if(j!==i) closeEditRideType(j); });
+  document.getElementById(`ari-${i}`).style.display='none';
+  document.getElementById(`are-${i}`).style.display='block';
+}
+function closeEditRideType(i){
+  const row=document.getElementById(`ari-${i}`);
+  const editor=document.getElementById(`are-${i}`);
+  if(row) row.style.display='flex';
+  if(editor) editor.style.display='none';
+}
+function saveEditRideType(i){
+  const name=document.getElementById(`eName-${i}`).value.trim(); if(!name) return;
+  rideTypes[i]={
+    name,
+    type:document.getElementById(`eType-${i}`).value,
+    time:document.getElementById(`eTime-${i}`).value.trim(),
+    location:document.getElementById(`eLoc-${i}`).value.trim(),
+    sub:document.getElementById(`eSub-${i}`).value.trim(),
+  };
+  renderAdminList();rebuildUI();render();scheduleSave();
 }
 function deleteRideType(i){
   rideTypes.splice(i,1);
