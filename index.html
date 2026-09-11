@@ -224,8 +224,8 @@ input:focus, select:focus { border-color: var(--pink); background: #fff; }
 
 <script>
 // ── BACKEND CONFIG ────────────────────────────────────────────────────────────
-const BACKEND = 'https://ta-weekly-scheduler.onrender.com'; // ← replace with your Render URL
-let schedulerCode = '';
+const BACKEND = 'https://ta-weekly-scheduler.onrender.com';
+const schedulerCode = 'TA';
 
 async function apiFetch(path, method = 'GET', body = null) {
   const opts = {
