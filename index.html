@@ -642,7 +642,7 @@ function render(){
     ctx.textBaseline=base||'alphabetic';ctx.fillText(s,x,y);
   };
 
-  const PAD_X_N    = isStory ? 130 : 190;
+  const PAD_X_N    = isStory ? 60 : 80;
   const DAY_COL_N  = isStory ? 200 : 188;
   const CARD_GAP_N = isStory ? 32 : 20;
   const HEADER_H_N = isStory ? 340 : 260;
@@ -656,7 +656,7 @@ function render(){
   const DATE_FS  = isStory ? 52 : 46;
   const DOT_R_N  = isStory ? 18 : 16;
   const ROW_GAP_N = isStory ? 20 : 16;
-  const ENTRY_H_N = isStory ? 160 : 130;
+  const ENTRY_H_N = isStory ? 160 : 130; // title row + sub row (time is right-aligned on title row)
 
   // Fixed canvas height — scale content to fit
   const CH = isStory ? 1920 : 1440;
@@ -753,7 +753,7 @@ function render(){
       const locLines=wrapText(ctx,s.location||'',availSubW,fs(LOC_FS));
       const extraLines=Math.max(0,subLines.length-1,locLines.length-1);
       const rowH=S(ENTRY_H_N)+extraLines*lineH;
-      return{subLines,locLines,rowH};
+      return{subLines,locLines,rowH,extraLines};
     });
 
     const CH_c=CARD_PAD*2+sessionMeta.reduce((a,m)=>a+m.rowH,0);
@@ -787,29 +787,32 @@ function render(){
         ctx.beginPath();ctx.moveTo(CONTENT_X,rowTop);ctx.lineTo(RIGHT_X,rowTop);ctx.stroke();}
 
       const typeColor=TC[s.type]||PINK;
-      const titleH=S(RIDE_FS);const subH=S(SUB_FS);
-      const contentH=titleH+ROW_GAP+subH;
-      const blockTop=rowCY-contentH/2;
+      // Layout: row 1 — [dot] Title (left)   Time (right)
+      //         row 2 — Sub (left)            Loc (right)
+      const titleH=S(RIDE_FS);
+      const subH=S(SUB_FS);
+      const totalBlock=titleH+ROW_GAP+subH;
+      const blockTop=rowCY-totalBlock/2;
       const titleY=blockTop+titleH/2;
       const subY=blockTop+titleH+ROW_GAP+subH/2;
 
       const DOT_X=CONTENT_X+DOT_R+S(10);
       const TEXT_X=DOT_X+DOT_R+S(14);
+      const availTitleW=RIGHT_X-TEXT_X-S(12);
 
-      // Measure time width, then clip title so they never overlap
-      ctx.font=fsB(RIDE_FS);
-      const timeW=ctx.measureText(s.time).width;
-      const maxTitleW=RIGHT_X-TEXT_X-timeW-S(20);
+      // Auto-shrink ride font until title + gap + time fit on one line
+      let rideFs=RIDE_FS;
+      ctx.font=`bold ${Math.round(rideFs*scale)}px Inter, Arial`;
+      while(rideFs>12){
+        ctx.font=`bold ${Math.round(rideFs*scale)}px Inter, Arial`;
+        if(ctx.measureText(s.name).width+S(20)+ctx.measureText(s.time).width<=availTitleW) break;
+        rideFs-=0.5;
+      }
+      const rideFsFont=`bold ${Math.round(rideFs*scale)}px Inter, Arial`;
 
       circ(DOT_X,titleY,DOT_R,typeColor);
-      // Truncate ride name if it would collide with the time
-      let rideName=s.name;
-      while(rideName.length>1 && ctx.measureText(rideName).width>maxTitleW){
-        rideName=rideName.slice(0,-1);
-      }
-      if(rideName!==s.name) rideName=rideName.trimEnd()+'…';
-      txt(rideName,TEXT_X,titleY,fsB(RIDE_FS),RIDE_NAME,'left','middle');
-      txt(s.time,RIGHT_X,titleY,fsB(RIDE_FS),TIME_COL,'right','middle');
+      txt(s.name,TEXT_X,titleY,rideFsFont,RIDE_NAME,'left','middle');
+      txt(s.time,RIGHT_X,titleY,rideFsFont,TIME_COL,'right','middle');
 
       meta.subLines.forEach((line,li)=>{
         txt(line,TEXT_X,subY+li*S(SUB_FS+4),fs(SUB_FS),SUB_COL,'left','middle');
